@@ -1,0 +1,7 @@
+pandas==1.5.3
+psutil==5.9.0
+streamlit==1.20.0
+streamlit_option_menu==0.3.2
+streamlit_authenticator==0.2.1
+python-dotenv==1.0.0
+deta==1.1.0
