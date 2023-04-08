@@ -72,7 +72,7 @@ def main():
             menu_title=None,
             options=["Add", "Delete", "Visualization"],
             icons=["pencil-fill", "trash-fill", "bar-chart-fill"],  # https://icons.getbootstrap.com/
-            orientation="horizontal",
+            orientation="horizontal", default_index=2,
         )
         
         #fetch_all_periods()
