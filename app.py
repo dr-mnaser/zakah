@@ -34,6 +34,14 @@ if 'start_date' not in st.session_state:
     
 if 'end_date' not in st.session_state:
     st.session_state['end_date'] = today
+    
+if 'transactions' not in st.session_state:
+    st.session_state['transactions'] = []
+    
+if 'transactions_changed' not in st.session_state:
+    st.session_state['transactions_changed'] = True
+    
+    
        
 # --- HIDE STREAMLIT STYLE ---
 hide_st_style = """
@@ -82,7 +90,7 @@ def main():
             st.header(f"Add Entry in {currency}")
             with st.form("entry_form", clear_on_submit=True):
                 # Enter transaction name
-                name = st.text_input("Enter Transaction Name")
+                name = st.text_input("Enter Transaction Name", max_chars=50)
                 "---"
                 # Create date picker with default values
                 period = st.date_input('Date', today)
@@ -105,23 +113,30 @@ def main():
                 submitted = st.form_submit_button("Save Data")
         
                 if submitted:
-                    try:
-                        db.insert_period(name, str(period), transaction, value, comment)
-                        st.success("Data saved!")
-                    except Exception as e:
-                        st.write(f"Error: {e}")
-                        st.write("Please try again!")
+                    if not name:
+                        st.error("Please enter a non-empty transaction name")
+                    else:
+                        try:
+                            db.insert_period(name, str(period), transaction, value, comment)
+                            st.session_state['transactions_changed'] = True
+                            st.success("Data saved!")
+                        except Exception as e:
+                            st.write(f"Error: {e}")
+                            st.write("Please try again!")
         
         # --- Delete Entry ---
         if selected == "Delete":
             st.header("Delete Entry")
             with st.form("delete_period"):
-                try:
-                    all_periods = db.get_all_periods()
-                except Exception as e:
-                    st.write(f"Error: {e}")
-                    st.write("Please try again!")
-                    all_periods = []
+                if st.session_state['transactions_changed']:
+                    try:
+                        all_periods = db.get_all_periods()
+                    except Exception as e:
+                        st.write(f"Error: {e}")
+                        st.write("Please try again!")
+                        all_periods = []
+                else:
+                    all_periods = [item['key'] for item in st.session_state['transactions']]
                     
                 period = st.selectbox("Select Transaction:", all_periods)
                 submitted = st.form_submit_button("Delete Entry")
@@ -130,6 +145,7 @@ def main():
                     if period is not None:
                         try:
                             db.delete_period(period)
+                            st.session_state['transactions_changed'] = True
                             st.success("Data deleted!")
                         except Exception as e:
                             st.write(f"Error: {e}")
@@ -149,26 +165,29 @@ def main():
                 
                 "---"
                 
-                try:
-                    #names = db.get_all_periods()
-                    items = db.fetch_all_periods()
-                    if len(items) > 0:
-                        names = [item["key"] for item in items]
-                        dates = [item["date"] for item in items]
-                        transactions = [item["transaction"] for item in items]
-                        values = [item["value"] for item in items]
-                        comments = [item["comment"] for item in items]
-                    else:
-                        dates = []
-                except Exception as e:
-                    st.write(f"Error: {e}")
-                    st.write("Please try again!")
-                    dates = []
-                    
-                
                 submitted = st.form_submit_button("Show Data")
                 
                 if submitted:
+                    try:
+                        if st.session_state['transactions_changed']:
+                            items = db.fetch_all_periods()
+                            st.session_state['transactions'] = items
+                            st.session_state['transactions_changed'] = False
+                        else:
+                            items = st.session_state['transactions']
+                        if len(items) > 0:
+                            names = [item["key"] for item in items]
+                            dates = [item["date"] for item in items]
+                            transactions = [item["transaction"] for item in items]
+                            values = [item["value"] for item in items]
+                            comments = [item["comment"] for item in items]
+                        else:
+                            dates = []
+                    except Exception as e:
+                        st.write(f"Error: {e}")
+                        st.write("Please try again!")
+                        dates = []
+                        
                     if len(dates) > 0:
                         trans_names = []
                         trans_dates = []
@@ -201,44 +220,11 @@ def main():
                         col6.metric("Paid", f"${total_expense}")
                         col7.metric("Remaining Zakah", f"${remaining_budget}")
                         
-                        st.table(df)
-                            
-                        # periods_dates = [datetime.datetime.strptime(period, '%Y-%m-%d').date() for period in periods]
-                        # periods_dates = [p for p in periods_dates if (p >= start_date) and (p <= end_date)]
-                        # periods = [str(p) for p in periods_dates]
-                        
-                        # if len(periods) > 0:
-                        #     dates = []
-                        #     transactions = []
-                        #     values = []
-                        #     comments = []
-                        #     for period in periods:
-                        #         period_data = db.get_period(period)
-                        #         dates.append(period)
-                        #         transactions.append(period_data.get("transaction"))
-                        #         values.append(period_data.get("value"))
-                        #         comments.append(period_data.get("comment"))
-                        #     data = {'Date':periods, 'Transaction':transactions,
-                        #             'Value':values, 'Comments':comments}
-                        #     df = pd.DataFrame.from_dict(data)
-                            
-                        #     col4, col5, col6, col7 = st.columns(4)
-                        #     total_income = 0
-                        #     total_expense = 0
-                        #     remaining_budget = 0
-                            
-                        #     total_income = sum(df[df['Transaction']=='Income']['Value'])
-                        #     zakah = math.ceil(0.025 * total_income)
-                        #     total_expense = sum(df[df['Transaction']=='Expense']['Value'])
-                        #     remaining_budget = zakah - total_expense
-                        #     col4.metric("Total Balance", f"${total_income}")
-                        #     col5.metric("Zakah", f"${zakah}")
-                        #     col6.metric("Paid", f"${total_expense}")
-                        #     col7.metric("Remaining Zakah", f"${remaining_budget}")
-                            
-                        #     st.table(df)
-                    
-        
+                        st.write(df)
+                    else:
+                        placeholder = st.empty()
+                        placeholder.info("No Transactions available!")
+    
     else:
         st.write("Sorry, the app is currently overloaded. Please try again later.")
     
