@@ -81,7 +81,9 @@ def main():
         if selected == "Add":
             st.header(f"Add Entry in {currency}")
             with st.form("entry_form", clear_on_submit=True):
-                
+                # Enter transaction name
+                name = st.text_input("Enter Transaction Name")
+                "---"
                 # Create date picker with default values
                 period = st.date_input('Date', today)
                 "---"
@@ -104,7 +106,7 @@ def main():
         
                 if submitted:
                     try:
-                        db.insert_period(str(period), transaction, value, comment)
+                        db.insert_period(name, str(period), transaction, value, comment)
                         st.success("Data saved!")
                     except Exception as e:
                         st.write(f"Error: {e}")
@@ -121,7 +123,7 @@ def main():
                     st.write("Please try again!")
                     all_periods = []
                     
-                period = st.selectbox("Select Period:", all_periods)
+                period = st.selectbox("Select Transaction:", all_periods)
                 submitted = st.form_submit_button("Delete Entry")
                 if submitted:
                     # Get data from database
@@ -148,51 +150,93 @@ def main():
                 "---"
                 
                 try:
-                    periods = db.get_all_periods()
+                    #names = db.get_all_periods()
+                    items = db.fetch_all_periods()
+                    if len(items) > 0:
+                        names = [item["key"] for item in items]
+                        dates = [item["date"] for item in items]
+                        transactions = [item["transaction"] for item in items]
+                        values = [item["value"] for item in items]
+                        comments = [item["comment"] for item in items]
+                    else:
+                        dates = []
                 except Exception as e:
                     st.write(f"Error: {e}")
                     st.write("Please try again!")
-                    periods = []
+                    dates = []
                     
                 
                 submitted = st.form_submit_button("Show Data")
                 
                 if submitted:
-                    if len(periods) > 0:
-                        periods_dates = [datetime.datetime.strptime(period, '%Y-%m-%d').date() for period in periods]
-                        periods_dates = [p for p in periods_dates if (p >= start_date) and (p <= end_date)]
-                        periods = [str(p) for p in periods_dates]
+                    if len(dates) > 0:
+                        trans_names = []
+                        trans_dates = []
+                        trans_transactions = []
+                        trans_values = []
+                        trans_comments = []
+                        for n, date_str in enumerate(dates):
+                            date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+                            if (date >= start_date) and (date <= end_date):
+                                trans_names.append(names[n])
+                                trans_dates.append(date_str)
+                                trans_transactions.append(transactions[n])
+                                trans_values.append(values[n])
+                                trans_comments.append(comments[n])
+                        data = {'Name': trans_names,'Date':trans_dates, 'Transaction':trans_transactions,
+                                'Value':trans_values, 'Comments':trans_comments}
+                        df = pd.DataFrame.from_dict(data)
                         
-                        if len(periods) > 0:
-                            dates = []
-                            transactions = []
-                            values = []
-                            comments = []
-                            for period in periods:
-                                period_data = db.get_period(period)
-                                dates.append(period)
-                                transactions.append(period_data.get("transaction"))
-                                values.append(period_data.get("value"))
-                                comments.append(period_data.get("comment"))
-                            data = {'Date':periods, 'Transaction':transactions,
-                                    'Value':values, 'Comments':comments}
-                            df = pd.DataFrame.from_dict(data)
+                        col4, col5, col6, col7 = st.columns(4)
+                        total_income = 0
+                        total_expense = 0
+                        remaining_budget = 0
+                        
+                        total_income = sum(df[df['Transaction']=='Income']['Value'])
+                        zakah = math.ceil(0.025 * total_income)
+                        total_expense = sum(df[df['Transaction']=='Expense']['Value'])
+                        remaining_budget = zakah - total_expense
+                        col4.metric("Total Balance", f"${total_income}")
+                        col5.metric("Zakah", f"${zakah}")
+                        col6.metric("Paid", f"${total_expense}")
+                        col7.metric("Remaining Zakah", f"${remaining_budget}")
+                        
+                        st.table(df)
                             
-                            col4, col5, col6, col7 = st.columns(4)
-                            total_income = 0
-                            total_expense = 0
-                            remaining_budget = 0
+                        # periods_dates = [datetime.datetime.strptime(period, '%Y-%m-%d').date() for period in periods]
+                        # periods_dates = [p for p in periods_dates if (p >= start_date) and (p <= end_date)]
+                        # periods = [str(p) for p in periods_dates]
+                        
+                        # if len(periods) > 0:
+                        #     dates = []
+                        #     transactions = []
+                        #     values = []
+                        #     comments = []
+                        #     for period in periods:
+                        #         period_data = db.get_period(period)
+                        #         dates.append(period)
+                        #         transactions.append(period_data.get("transaction"))
+                        #         values.append(period_data.get("value"))
+                        #         comments.append(period_data.get("comment"))
+                        #     data = {'Date':periods, 'Transaction':transactions,
+                        #             'Value':values, 'Comments':comments}
+                        #     df = pd.DataFrame.from_dict(data)
                             
-                            total_income = sum(df[df['Transaction']=='Income']['Value'])
-                            zakah = math.ceil(0.025 * total_income)
-                            total_expense = sum(df[df['Transaction']=='Expense']['Value'])
-                            remaining_budget = zakah - total_expense
-                            col4.metric("Total Balance", f"${total_income}")
-                            col5.metric("Zakah", f"${zakah}")
-                            col6.metric("Paid", f"${total_expense}")
-                            col7.metric("Remaining Zakah", f"${remaining_budget}")
+                        #     col4, col5, col6, col7 = st.columns(4)
+                        #     total_income = 0
+                        #     total_expense = 0
+                        #     remaining_budget = 0
                             
-                            st.table(df)
+                        #     total_income = sum(df[df['Transaction']=='Income']['Value'])
+                        #     zakah = math.ceil(0.025 * total_income)
+                        #     total_expense = sum(df[df['Transaction']=='Expense']['Value'])
+                        #     remaining_budget = zakah - total_expense
+                        #     col4.metric("Total Balance", f"${total_income}")
+                        #     col5.metric("Zakah", f"${zakah}")
+                        #     col6.metric("Paid", f"${total_expense}")
+                        #     col7.metric("Remaining Zakah", f"${remaining_budget}")
+                            
+                        #     st.table(df)
                     
         
     else:

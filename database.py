@@ -18,9 +18,9 @@ deta = Deta(DETA_KEY)
 db = deta.Base("zakah")
 
 
-def insert_period(period, transaction, value, comment):
+def insert_period(name, date, transaction, value, comment):
     """Returns the report on a successful creation, otherwise raises an error"""
-    return db.put({"key": period, "transaction": transaction, "value": value, "comment": comment})
+    return db.put({"key": name, "date": date, "transaction": transaction, "value": value, "comment": comment})
 
 
 def fetch_all_periods():
@@ -29,21 +29,21 @@ def fetch_all_periods():
     return res.items
 
 
-def get_period(period):
+def get_period(name):
     """If not found, the function will return None"""
-    return db.get(period)
+    return db.get(name)
 
-def delete_period(period):
+def delete_period(name):
     """If not found, the function will return None"""
-    return db.delete(period)
+    return db.delete(name)
 
 def get_all_periods():
     items = fetch_all_periods()
     if len(items) > 0:
-        periods = [item["key"] for item in items]
+        names = [item["key"] for item in items]
     else:
-        periods = []
-    return periods
+        names = []
+    return names
 
 #%%
 # Users Authentication database
